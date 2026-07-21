@@ -36,6 +36,7 @@ setup(
     entry_points={
         'console_scripts': [
         'controller = inspectra_bringup.inspectra_controller:main',
+        'motion_planner =           inspectra_manipulation.motion_planner:main', 
         ],
     },
 )
