@@ -1,0 +1,6 @@
+source;share/inspectra_description/hook/pythonpath.ps1
+source;share/inspectra_description/hook/pythonpath.dsv
+source;share/inspectra_description/hook/pythonpath.sh
+source;share/inspectra_description/hook/ament_prefix_path.ps1
+source;share/inspectra_description/hook/ament_prefix_path.dsv
+source;share/inspectra_description/hook/ament_prefix_path.sh
