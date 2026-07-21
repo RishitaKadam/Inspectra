@@ -1,15 +1,19 @@
 <?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLS<?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>inspectra_manipulation</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="kadamrishita3@gmail.com">rk</maintainer>
-  <license>TODO: License declaration</license>
-
+  <version>0.1.0</version>
+  <description>Motion planning package for the Inspectra Panda arm (MoveItPy wrapper).</description>
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
+  <depend>moveit_configs_utils</depend>
+  <depend>ament_index_python</depend>
   <depend>rclpy</depend>
+  <depend>moveit_py</depend>
   <depend>geometry_msgs</depend>
-  <depend>moveit_msgs</depend>
+  <depend>moveit_resources_panda_moveit_config</depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

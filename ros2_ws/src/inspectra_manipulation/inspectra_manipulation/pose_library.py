@@ -1,0 +1,61 @@
+"""
+Named pose definitions for the Inspectra Panda arm.
+
+Two kinds of poses are supported:
+  1. MoveIt "predefined configurations" (SRDF group states), referenced
+     by name only, e.g. "ready", "extended" — these come from the
+     panda_arm.srdf shipped with moveit_resources_panda_moveit_config.
+  2. Explicit joint-value dictionaries, for poses we define ourselves
+     (used once inspectra_description ships its own SRDF).
+
+PRE_PICK / PICK / INSPECTION / PASS_BIN / FAIL_BIN are intentionally
+left unresolved until inspectra_perception + inspectra_description
+exist, so a bad call fails loudly instead of moving to a wrong pose.
+"""
+
+from enum import Enum
+
+
+class PoseType(Enum):
+    NAMED_CONFIG = "named_config"
+    JOINT_VALUES = "joint_values"
+    UNRESOLVED = "unresolved"
+
+
+# Poses available out of the box from moveit_resources_panda_moveit_config's SRDF
+HOME = {"type": PoseType.NAMED_CONFIG, "value": "ready"}
+READY = {"type": PoseType.NAMED_CONFIG, "value": "ready"}
+EXTENDED = {"type": PoseType.NAMED_CONFIG, "value": "extended"}
+
+# Placeholder poses for future milestones (perception + scene dependent)
+PRE_PICK = {"type": PoseType.UNRESOLVED, "value": None}
+PICK = {"type": PoseType.UNRESOLVED, "value": None}
+INSPECTION = {"type": PoseType.UNRESOLVED, "value": None}
+PASS_BIN = {"type": PoseType.UNRESOLVED, "value": None}
+FAIL_BIN = {"type": PoseType.UNRESOLVED, "value": None}
+
+POSE_LIBRARY = {
+    "HOME": HOME,
+    "READY": READY,
+    "EXTENDED": EXTENDED,
+    "PRE_PICK": PRE_PICK,
+    "PICK": PICK,
+    "INSPECTION": INSPECTION,
+    "PASS_BIN": PASS_BIN,
+    "FAIL_BIN": FAIL_BIN,
+}
+
+
+def get_pose(name: str) -> dict:
+    """Look up a named pose. Raises KeyError for unknown names and
+    NotImplementedError for poses not yet wired up (scene-dependent)."""
+    if name not in POSE_LIBRARY:
+        raise KeyError(f"Unknown pose '{name}'. Available: {list(POSE_LIBRARY)}")
+
+    pose = POSE_LIBRARY[name]
+    if pose["type"] == PoseType.UNRESOLVED:
+        raise NotImplementedError(
+            f"Pose '{name}' requires inspectra_perception / scene_manager, "
+            "which don't exist yet. Use HOME, READY, or EXTENDED for now."
+        )
+    return pose
