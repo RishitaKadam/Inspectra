@@ -19,6 +19,8 @@ setup(
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': [],  # motion_planner.py node added in Feature 2
+        'console_scripts': [
+             'motion_planner_node = inspectra_manipulation.motion_planner:main',
+        ],  # motion_planner.py node added in Feature 2
     },
 )
