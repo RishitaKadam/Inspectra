@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'object_detector_node = inspectra_perception.object_detector:main',
             'test_image_publisher = inspectra_perception.test_image_publisher:main',
+            'pose_estimator_node = inspectra_perception.pose_estimator:main',
         ],
     },
 )

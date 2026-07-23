@@ -36,7 +36,31 @@ def generate_launch_description():
         actions=[motion_planner_node],
     )
 
+    camera_mount_tf = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="camera_mount_tf",
+        arguments=[
+            "--x", "0.5", "--y", "0.0", "--z", "1.0",
+            "--roll", "0", "--pitch", "1.5708", "--yaw", "0",
+            "--frame-id", "panda_link0", "--child-frame-id", "camera_link",
+        ],
+    )
+
+    camera_optical_tf = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="camera_optical_tf",
+        arguments=[
+            "--x", "0", "--y", "0", "--z", "0",
+            "--roll", "-1.5708", "--pitch", "0", "--yaw", "-1.5708",
+            "--frame-id", "camera_link", "--child-frame-id", "camera_optical_frame",
+        ],
+    )
+
     return LaunchDescription([
         demo,
+        camera_mount_tf,
+        camera_optical_tf,
         delayed_motion_planner_node,
     ])
