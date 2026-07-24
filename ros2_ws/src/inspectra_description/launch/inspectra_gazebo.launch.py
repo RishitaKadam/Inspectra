@@ -20,8 +20,16 @@ def generate_launch_description():
     xacro_path = os.path.join(pkg_share, "urdf", "inspectra_panda.urdf.xacro")
     world_path = os.path.join(pkg_share, "worlds", "inspectra_world.sdf")
 
+    # Rename fer_* -> panda_* so link/joint names match the existing
+    # moveit_resources_panda_moveit_config SRDF/kinematics/joint_limits
+    # (same physical robot structure, renamed by Franka upstream).
+    # Safe as plain text substitution: mesh paths use "/fer/" (no "fer_"
+    # substring), so only entity names are affected.
     robot_description = ParameterValue(
-        Command(["xacro ", xacro_path]), value_type=str
+        Command(
+            f'bash -c "xacro {xacro_path} | sed \'s/fer_/panda_/g\'"'
+        ),
+        value_type=str
     )
 
     gz_sim = IncludeLaunchDescription(

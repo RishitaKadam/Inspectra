@@ -1,0 +1,18 @@
+# MoveIt uses this configuration for controller management
+
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_simple_controller_manager:
+  controller_names:
+    - panda_arm_controller
+
+  panda_arm_controller:
+    type: FollowJointTrajectory
+    joints:
+      - fer_joint1
+      - fer_joint2
+      - fer_joint3
+      - fer_joint4
+      - fer_joint5
+      - fer_joint6
+      - fer_joint7
