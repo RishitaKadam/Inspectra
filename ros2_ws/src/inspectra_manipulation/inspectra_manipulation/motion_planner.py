@@ -15,6 +15,8 @@ from inspectra_manipulation.planner import MotionPlanner
 from inspectra_manipulation.scene_manager import SceneManager
 from inspectra_manipulation.executor import TrajectoryExecutor
 from geometry_msgs.msg import PoseStamped
+from vision_msgs.msg import Detection2DArray
+from inspectra_manipulation import inspection_logic
 from inspectra_manipulation import pose_library
 
 
@@ -46,6 +48,15 @@ class MotionPlannerNode(Node):
             PoseStamped, "/pose_estimator_node/pick_pose", self._on_pick_pose, 10
         )
 
+        self._latest_detection = None  # (class_name, confidence)
+        self._detections_sub = self.create_subscription(
+            Detection2DArray, "/object_detector_node/detections", self._on_detections, 10
+        )
+
+        self._run_cycle_sub = self.create_subscription(
+            String, "~/run_cycle", self._on_run_cycle, 10
+        )
+
         self.get_logger().info(
             "MotionPlannerNode ready. Publish a pose name (e.g. 'READY') to "
             "'~/move_to_pose' to command a move."
@@ -61,6 +72,18 @@ class MotionPlannerNode(Node):
     def _on_pick_pose(self, msg: PoseStamped):
         self._latest_pick_pose = msg
 
+    def _on_detections(self, msg: Detection2DArray):
+        if not msg.detections:
+            return
+        best = max(msg.detections, key=lambda d: d.results[0].hypothesis.score)
+        self._latest_detection = (
+            best.results[0].hypothesis.class_id,
+            best.results[0].hypothesis.score,
+        )
+
+    def _on_run_cycle(self, msg: String):
+        self._run_inspection_cycle()
+
     def _move_to_named_pose(self, name: str):
         if name.upper() == "PICK":
             self._move_to_detected_pick_pose()
@@ -72,9 +95,14 @@ class MotionPlannerNode(Node):
             self.get_logger().error(str(e))
             return
 
-        config_name = pose["value"]
-        self.get_logger().info(f"Moving to pose '{name}' -> config '{config_name}'")
-        success = self._executor.execute_named_pose(config_name)
+        if pose["type"] == pose_library.PoseType.CARTESIAN:
+            x, y, z = pose["value"]
+            success = self._move_to_cartesian(x, y, z)
+        else:
+            config_name = pose["value"]
+            self.get_logger().info(f"Moving to pose '{name}' -> config '{config_name}'")
+            success = self._executor.execute_named_pose(config_name)
+
         if success:
             self.get_logger().info(f"Reached pose '{name}'")
         else:
@@ -127,6 +155,62 @@ class MotionPlannerNode(Node):
 
     def set_start_to_current_via_planner(self):
         self._planner.set_start_to_current()
+
+    def _move_to_cartesian(self, x: float, y: float, z: float) -> bool:
+        self.set_start_to_current_via_planner()
+        result = self._planner.plan_to_pose(x=x, y=y, z=z, frame_id="panda_link0")
+        return self._planner.execute(result)
+
+    def _run_inspection_cycle(self):
+        """Full pick -> inspect -> decide -> sort cycle.
+
+        NOTE: 'pick' here means 'hover above the object' — there is no
+        gripper in this MoveIt config, so no physical grasp occurs.
+        The PASS/FAIL decision is a placeholder rule (inspection_logic.py),
+        not real defect inspection.
+        """
+        self.get_logger().info("=== Starting inspection cycle ===")
+
+        self.get_logger().info("Step 1/4: Moving to detected object (PICK)")
+        if not self._move_to_detected_pick_pose_bool():
+            self.get_logger().error("Cycle aborted: failed to reach PICK pose")
+            return
+
+        self.get_logger().info("Step 2/4: Moving to INSPECTION pose")
+        inspection_pose = pose_library.get_pose("INSPECTION")
+        ix, iy, iz = inspection_pose["value"]
+        if not self._move_to_cartesian(ix, iy, iz):
+            self.get_logger().error("Cycle aborted: failed to reach INSPECTION pose")
+            return
+
+        if self._latest_detection is None:
+            self.get_logger().error("Cycle aborted: no detection available for PASS/FAIL decision")
+            return
+        class_name, confidence = self._latest_detection
+        decision = inspection_logic.decide_pass_fail(class_name, confidence)
+        self.get_logger().info(
+            f"Step 3/4: Decision for '{class_name}' (conf={confidence:.2f}): {decision}"
+        )
+
+        bin_name = "PASS_BIN" if decision == "PASS" else "FAIL_BIN"
+        self.get_logger().info(f"Step 4/4: Moving to {bin_name}")
+        bin_pose = pose_library.get_pose(bin_name)
+        bx, by, bz = bin_pose["value"]
+        if not self._move_to_cartesian(bx, by, bz):
+            self.get_logger().error(f"Cycle aborted: failed to reach {bin_name}")
+            return
+
+        self.get_logger().info(f"=== Cycle complete: '{class_name}' sorted to {bin_name} ===")
+
+    def _move_to_detected_pick_pose_bool(self) -> bool:
+        """Same as _move_to_detected_pick_pose but returns success/failure
+        instead of only logging, so _run_inspection_cycle can chain on it."""
+        if self._latest_pick_pose is None:
+            self.get_logger().error("No pick pose received yet from pose_estimator_node")
+            return False
+        pose = self._latest_pick_pose.pose
+        hover_z = pose.position.z + 0.15
+        return self._move_to_cartesian(pose.position.x, pose.position.y, hover_z)
 
     def destroy_node(self):
         self._planner.shutdown()

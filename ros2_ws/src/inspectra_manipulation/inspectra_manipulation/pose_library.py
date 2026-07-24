@@ -19,6 +19,7 @@ from enum import Enum
 class PoseType(Enum):
     NAMED_CONFIG = "named_config"
     JOINT_VALUES = "joint_values"
+    CARTESIAN = "cartesian"
     UNRESOLVED = "unresolved"
 
 
@@ -27,12 +28,19 @@ HOME = {"type": PoseType.NAMED_CONFIG, "value": "ready"}
 READY = {"type": PoseType.NAMED_CONFIG, "value": "ready"}
 EXTENDED = {"type": PoseType.NAMED_CONFIG, "value": "extended"}
 
-# Placeholder poses for future milestones (perception + scene dependent)
-PRE_PICK = {"type": PoseType.UNRESOLVED, "value": None}
+# PICK is resolved dynamically at runtime from live perception
+# (pose_estimator_node), handled as a special case in motion_planner_node
+# rather than a static entry here.
 PICK = {"type": PoseType.UNRESOLVED, "value": None}
-INSPECTION = {"type": PoseType.UNRESOLVED, "value": None}
-PASS_BIN = {"type": PoseType.UNRESOLVED, "value": None}
-FAIL_BIN = {"type": PoseType.UNRESOLVED, "value": None}
+
+# Fixed Cartesian waypoints (x, y, z in panda_link0), same mechanism as
+# PICK's hover pose (MotionPlanner.plan_to_pose). Values chosen to be
+# reachable/collision-free relative to the inspection_table at (0.5, 0, 0);
+# not derived from any real bin/fixture geometry yet.
+PRE_PICK = {"type": PoseType.UNRESOLVED, "value": None}
+INSPECTION = {"type": PoseType.CARTESIAN, "value": (0.4, 0.0, 0.35)}
+PASS_BIN = {"type": PoseType.CARTESIAN, "value": (0.3, 0.5, 0.25)}
+FAIL_BIN = {"type": PoseType.CARTESIAN, "value": (0.3, -0.5, 0.25)}
 
 POSE_LIBRARY = {
     "HOME": HOME,
