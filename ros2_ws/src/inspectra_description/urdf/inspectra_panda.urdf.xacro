@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="inspectra_panda">
+
+  <!-- franka_description (current layout): Panda is now called "fer"
+       (Franka Emika Research robot). Joints get prefixed "fer_" by
+       default (fer_joint1..7, fer_link0..8). This differs from
+       moveit_resources_panda_moveit_config's "panda_*" naming used
+       elsewhere in this project — reconciling that is Feature 7b. -->
+  <xacro:include filename="$(find franka_description)/robots/common/franka_robot.xacro"/>
+
+  <xacro:franka_robot
+    robot_type="fer"
+    connected_to="world"
+    hand="false"
+    gazebo="false"
+    no_prefix="false"
+    arm_prefix=""
+  />
+
+  <!-- ros2_control interface: exposes each joint's position command/state
+       so gz_ros2_control's plugin (below) can drive them in simulation. -->
+  <ros2_control name="InspectraPandaSystem" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+    <xacro:macro name="fer_joint_interface" params="joint_name">
+      <joint name="${joint_name}">
+        <command_interface name="position"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+        <state_interface name="effort"/>
+      </joint>
+    </xacro:macro>
+    <xacro:fer_joint_interface joint_name="fer_joint1"/>
+    <xacro:fer_joint_interface joint_name="fer_joint2"/>
+    <xacro:fer_joint_interface joint_name="fer_joint3"/>
+    <xacro:fer_joint_interface joint_name="fer_joint4"/>
+    <xacro:fer_joint_interface joint_name="fer_joint5"/>
+    <xacro:fer_joint_interface joint_name="fer_joint6"/>
+    <xacro:fer_joint_interface joint_name="fer_joint7"/>
+  </ros2_control>
+
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find inspectra_description)/config/inspectra_controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+</robot>

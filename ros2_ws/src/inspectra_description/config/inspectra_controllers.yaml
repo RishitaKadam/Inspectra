@@ -1,0 +1,28 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    panda_arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+panda_arm_controller:
+  ros__parameters:
+    joints:
+      - fer_joint1
+      - fer_joint2
+      - fer_joint3
+      - fer_joint4
+      - fer_joint5
+      - fer_joint6
+      - fer_joint7
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    state_publish_rate: 50.0
+    action_monitor_rate: 20.0
+    allow_partial_joints_goal: false
