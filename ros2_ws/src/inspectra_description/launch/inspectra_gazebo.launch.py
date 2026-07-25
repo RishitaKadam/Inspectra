@@ -25,10 +25,9 @@ def generate_launch_description():
     # (same physical robot structure, renamed by Franka upstream).
     # Safe as plain text substitution: mesh paths use "/fer/" (no "fer_"
     # substring), so only entity names are affected.
+    generate_script = os.path.join(pkg_share, "urdf", "generate_panda_urdf.sh")
     robot_description = ParameterValue(
-        Command(
-            f'bash -c "xacro {xacro_path} | sed \'s/fer_/panda_/g\'"'
-        ),
+        Command(generate_script),
         value_type=str
     )
 
