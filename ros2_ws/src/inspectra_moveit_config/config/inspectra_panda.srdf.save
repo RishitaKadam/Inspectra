@@ -41,7 +41,7 @@
         <joint name="panda_joint7" value="0"/>
     </group_state>
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
-    <virtual_joint name="world_joint" type="fixed" parent_frame="world" child_link="panda_link0"/>
+    <virtual_joint name="world_joint" type="fixed" parent_frame="world" child_link="fer_link0"/>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="panda_link0" link2="panda_link1" reason="Adjacent"/>
     <disable_collisions link1="panda_link0" link2="panda_link2" reason="Never"/>
@@ -49,17 +49,18 @@
     <disable_collisions link1="panda_link0" link2="panda_link4" reason="Never"/>
     <disable_collisions link1="panda_link1" link2="panda_link2" reason="Adjacent"/>
     <disable_collisions link1="panda_link1" link2="panda_link3" reason="Never"/>
-    <disable_collisions link1="panda_link1" link2="panda_link4" reason="Never"/>
-    <disable_collisions link1="panda_link2" link2="panda_link3" reason="Adjacent"/>
-    <disable_collisions link1="panda_link2" link2="panda_link4" reason="Never"/>
-    <disable_collisions link1="panda_link3" link2="panda_link4" reason="Adjacent"/>
-    <disable_collisions link1="panda_link3" link2="panda_link5" reason="Never"/>
-    <disable_collisions link1="panda_link3" link2="panda_link6" reason="Never"/>
-    <disable_collisions link1="panda_link3" link2="panda_link7" reason="Never"/>
-    <disable_collisions link1="panda_link4" link2="panda_link5" reason="Adjacent"/>
-    <disable_collisions link1="panda_link4" link2="panda_link6" reason="Never"/>
-    <disable_collisions link1="panda_link4" link2="panda_link7" reason="Never"/>
-    <disable_collisions link1="panda_link5" link2="panda_link6" reason="Adjacent"/>
-    <disable_collisions link1="panda_link5" link2="panda_link7" reason="Default"/>
-    <disable_collisions link1="panda_link6" link2="panda_link7" reason="Adjacent"/>
+    <disable_collisions linpanda_link1
+zk1="fer_link1" link2="fer_link4" reason="Never"/>
+    <disable_collisions link1="fer_link2" link2="fer_link3" reason="Adjacent"/>
+    <disable_collisions link1="fer_link2" link2="fer_link4" reason="Never"/>
+    <disable_collisions link1="fer_link3" link2="fer_link4" reason="Adjacent"/>
+    <disable_collisions link1="fer_link3" link2="fer_link5" reason="Never"/>
+    <disable_collisions link1="fer_link3" link2="fer_link6" reason="Never"/>
+    <disable_collisions link1="fer_link3" link2="fer_link7" reason="Never"/>
+    <disable_collisions link1="fer_link4" link2="fer_link5" reason="Adjacent"/>
+    <disable_collisions link1="fer_link4" link2="fer_link6" reason="Never"/>
+    <disable_collisions link1="fer_link4" link2="fer_link7" reason="Never"/>
+    <disable_collisions link1="fer_link5" link2="fer_link6" reason="Adjacent"/>
+    <disable_collisions link1="fer_link5" link2="fer_link7" reason="Default"/>
+    <disable_collisions link1="fer_link6" link2="fer_link7" reason="Adjacent"/>
 </robot>
