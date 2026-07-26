@@ -11,7 +11,9 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'media'), glob('media/*')),
+        (os.path.join('share', package_name, 'media'), [f for f in glob('media/*') if os.path.isfile(f)]),
+        (os.path.join('share', package_name, 'media', 'conveyor_feed'), glob('media/conveyor_feed/*')),
+        (os.path.join('share', package_name, 'models'), glob('models/*.pt')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -24,6 +26,7 @@ setup(
         'console_scripts': [
             'object_detector_node = inspectra_perception.object_detector:main',
             'test_image_publisher = inspectra_perception.test_image_publisher:main',
+            'conveyor_publisher = inspectra_perception.conveyor_publisher:main',
             'pose_estimator_node = inspectra_perception.pose_estimator:main',
         ],
     },

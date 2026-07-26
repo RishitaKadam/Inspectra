@@ -4,7 +4,9 @@ ObjectDetectorNode: subscribes to a camera image topic, runs YOLOv8
 detections as vision_msgs/Detection2DArray plus a debug annotated image.
 """
 
+import os
 import rclpy
+from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
@@ -17,11 +19,21 @@ class ObjectDetectorNode(Node):
     def __init__(self):
         super().__init__("object_detector_node")
 
-        self.declare_parameter("model_path", "yolov8n.pt")
+        self.declare_parameter("model_path", "pcb_defect_best.pt")
         self.declare_parameter("confidence_threshold", 0.5)
         self.declare_parameter("input_image_topic", "/camera/image_raw")
 
         model_path = self.get_parameter("model_path").get_parameter_value().string_value
+        if not os.path.isabs(model_path) and not model_path.endswith((".pt",)) is False and "/" not in model_path:
+            # Bare filename like 'pcb_defect_best.pt' -> resolve to our installed models dir.
+            # (yolov8n.pt style names starting without a path are left as-is so ultralytics
+            # can still auto-download stock COCO weights if ever needed.)
+            candidate = os.path.join(
+                get_package_share_directory("inspectra_perception"), "models", model_path
+            )
+            if os.path.isfile(candidate):
+                model_path = candidate
+
         self._conf_threshold = (
             self.get_parameter("confidence_threshold").get_parameter_value().double_value
         )

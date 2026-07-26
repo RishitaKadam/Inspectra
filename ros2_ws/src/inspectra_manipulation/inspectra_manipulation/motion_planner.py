@@ -49,6 +49,7 @@ class MotionPlannerNode(Node):
         )
 
         self._latest_detection = None  # (class_name, confidence)
+        self._cycle_in_progress = False
         self._detections_sub = self.create_subscription(
             Detection2DArray, "/object_detector_node/detections", self._on_detections, 10
         )
@@ -73,13 +74,25 @@ class MotionPlannerNode(Node):
         self._latest_pick_pose = msg
 
     def _on_detections(self, msg: Detection2DArray):
-        if not msg.detections:
-            return
-        best = max(msg.detections, key=lambda d: d.results[0].hypothesis.score)
-        self._latest_detection = (
-            best.results[0].hypothesis.class_id,
-            best.results[0].hypothesis.score,
-        )
+        detections = [
+            (d.results[0].hypothesis.class_id, d.results[0].hypothesis.score)
+            for d in msg.detections
+        ]
+        self._latest_detection = detections[0] if detections else None
+
+        if self._cycle_in_progress:
+            return  # don't interrupt an active pick/sort cycle
+
+        classification = inspection_logic.classify_pcb(detections)
+        if classification == "GOOD":
+            self.get_logger().info("GOOD PCB detected -> diverting to GOOD_BIN")
+            self._cycle_in_progress = True
+            self._run_inspection_cycle()
+            self._cycle_in_progress = False
+        else:
+            self.get_logger().info(
+                "BAD PCB detected -> no robot action, continues on belt to reject area"
+            )
 
     def _on_run_cycle(self, msg: String):
         self._run_inspection_cycle()
@@ -146,6 +159,7 @@ class MotionPlannerNode(Node):
         result = self._planner.plan_to_pose(
             x=pose.position.x, y=pose.position.y, z=hover_z,
             frame_id="panda_link0",
+            qx=1.0, qy=0.0, qz=0.0, qw=0.0,
         )
         success = self._planner.execute(result)
         if success:
@@ -158,7 +172,15 @@ class MotionPlannerNode(Node):
 
     def _move_to_cartesian(self, x: float, y: float, z: float) -> bool:
         self.set_start_to_current_via_planner()
-        result = self._planner.plan_to_pose(x=x, y=y, z=z, frame_id="panda_link0")
+        # Point the flange straight down (180deg rotation about X from
+        # identity) instead of the default identity orientation — this
+        # cell only does top-down pick/inspect/bin moves, and identity
+        # orientation is often physically unreachable at real (non-origin)
+        # XY positions, causing GOAL_STATE_INVALID from OMPL's IK sampler.
+        result = self._planner.plan_to_pose(
+            x=x, y=y, z=z, frame_id="panda_link0",
+            qx=1.0, qy=0.0, qz=0.0, qw=0.0,
+        )
         return self._planner.execute(result)
 
     def _run_inspection_cycle(self):
@@ -183,16 +205,9 @@ class MotionPlannerNode(Node):
             self.get_logger().error("Cycle aborted: failed to reach INSPECTION pose")
             return
 
-        if self._latest_detection is None:
-            self.get_logger().error("Cycle aborted: no detection available for PASS/FAIL decision")
-            return
-        class_name, confidence = self._latest_detection
-        decision = inspection_logic.decide_pass_fail(class_name, confidence)
-        self.get_logger().info(
-            f"Step 3/4: Decision for '{class_name}' (conf={confidence:.2f}): {decision}"
-        )
+        self.get_logger().info("Step 3/4: GOOD PCB confirmed, routing to GOOD_BIN")
 
-        bin_name = "PASS_BIN" if decision == "PASS" else "FAIL_BIN"
+        bin_name = "PASS_BIN"
         self.get_logger().info(f"Step 4/4: Moving to {bin_name}")
         bin_pose = pose_library.get_pose(bin_name)
         bx, by, bz = bin_pose["value"]
@@ -200,7 +215,7 @@ class MotionPlannerNode(Node):
             self.get_logger().error(f"Cycle aborted: failed to reach {bin_name}")
             return
 
-        self.get_logger().info(f"=== Cycle complete: '{class_name}' sorted to {bin_name} ===")
+        self.get_logger().info(f"=== Cycle complete: PCB sorted to {bin_name} ===")
 
     def _move_to_detected_pick_pose_bool(self) -> bool:
         """Same as _move_to_detected_pick_pose but returns success/failure

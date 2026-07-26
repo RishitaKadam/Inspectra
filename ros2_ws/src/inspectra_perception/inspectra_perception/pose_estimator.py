@@ -20,6 +20,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.time import Time
 from vision_msgs.msg import Detection2DArray
+from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseStamped
 
 import tf2_ros
@@ -56,18 +57,23 @@ class PoseEstimatorNode(Node):
         self.declare_parameter("camera_frame", "camera_optical_frame")
         self.declare_parameter("target_frame", "panda_link0")
         self.declare_parameter("table_plane_z", 0.0)
-        self.declare_parameter("fx", 554.3827)
-        self.declare_parameter("fy", 554.3827)
-        self.declare_parameter("cx", 320.0)
-        self.declare_parameter("cy", 240.0)
+        self.declare_parameter("assumed_hfov_deg", 60.0)
+        # fx/fy/cx/cy are now derived per-frame from the actual image
+        # dimensions (see _on_image) instead of fixed here, since the
+        # conveyor feed mixes very different image resolutions (real
+        # PCB defect photos vs separately-sourced GOOD photos).
 
         self._camera_frame = self.get_parameter("camera_frame").get_parameter_value().string_value
         self._target_frame = self.get_parameter("target_frame").get_parameter_value().string_value
         self._table_z = self.get_parameter("table_plane_z").get_parameter_value().double_value
-        self._fx = self.get_parameter("fx").get_parameter_value().double_value
-        self._fy = self.get_parameter("fy").get_parameter_value().double_value
-        self._cx = self.get_parameter("cx").get_parameter_value().double_value
-        self._cy = self.get_parameter("cy").get_parameter_value().double_value
+        self._hfov_deg = self.get_parameter("assumed_hfov_deg").get_parameter_value().double_value
+        self._fx = None
+        self._fy = None
+        self._cx = None
+        self._cy = None
+        self._image_sub = self.create_subscription(
+            Image, "/camera/image_raw", self._on_image, 10
+        )
 
         self._logger = get_inspectra_logger("pose_estimator")
 
@@ -77,6 +83,18 @@ class PoseEstimatorNode(Node):
         self._detections_sub = self.create_subscription(
             Detection2DArray, "/object_detector_node/detections", self._on_detections, 10
         )
+
+    def _on_image(self, msg: Image):
+        """Derive camera intrinsics from the actual image size, since the
+        conveyor feed mixes different resolutions. Assumes a horizontal
+        FOV of assumed_hfov_deg (rough placeholder, not a real calibration)."""
+        import math
+        width, height = msg.width, msg.height
+        self._cx = width / 2.0
+        self._cy = height / 2.0
+        hfov_rad = math.radians(self._hfov_deg)
+        self._fx = (width / 2.0) / math.tan(hfov_rad / 2.0)
+        self._fy = self._fx  # assume square pixels
         self._pick_pose_pub = self.create_publisher(PoseStamped, "~/pick_pose", 10)
 
         self.get_logger().info(
@@ -95,6 +113,9 @@ class PoseEstimatorNode(Node):
 
     def _on_detections(self, msg: Detection2DArray):
         if not msg.detections:
+            return
+        if self._fx is None:
+            self.get_logger().warning("No image received yet, cannot compute intrinsics")
             return
 
         try:
