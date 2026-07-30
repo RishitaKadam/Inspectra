@@ -4,3 +4,6 @@ source;share/inspectra_bringup/hook/pythonpath.sh
 source;share/inspectra_bringup/hook/ament_prefix_path.ps1
 source;share/inspectra_bringup/hook/ament_prefix_path.dsv
 source;share/inspectra_bringup/hook/ament_prefix_path.sh
+source;../../build/inspectra_bringup/share/inspectra_bringup/hook/pythonpath_develop.ps1
+source;../../build/inspectra_bringup/share/inspectra_bringup/hook/pythonpath_develop.dsv
+source;../../build/inspectra_bringup/share/inspectra_bringup/hook/pythonpath_develop.sh

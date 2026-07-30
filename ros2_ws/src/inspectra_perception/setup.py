@@ -28,6 +28,7 @@ setup(
             'test_image_publisher = inspectra_perception.test_image_publisher:main',
             'conveyor_publisher = inspectra_perception.conveyor_publisher:main',
             'pose_estimator_node = inspectra_perception.pose_estimator:main',
+            'conveyor_motion_node = inspectra_perception.conveyor_motion_node:main',
         ],
     },
 )

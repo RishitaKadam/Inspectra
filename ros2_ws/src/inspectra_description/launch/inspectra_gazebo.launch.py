@@ -80,6 +80,14 @@ def generate_launch_description():
         value=f"{franka_share}:{inspectra_share}"
     )
 
+    pose_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="pose_bridge",
+        arguments=["/world/inspectra_world/set_pose@ros_gz_interfaces/srv/SetEntityPose"],
+        output="screen",
+    )
+
     clock_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
@@ -94,4 +102,5 @@ def generate_launch_description():
         spawn_entity,
         delayed_controllers,
         clock_bridge,
+        pose_bridge,
     ])

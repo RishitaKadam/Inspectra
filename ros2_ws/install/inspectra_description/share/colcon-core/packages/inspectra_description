@@ -1,0 +1,1 @@
+controller_manager:franka_description:gz_ros2_control:joint_state_broadcaster:joint_trajectory_controller:moveit_resources_panda_moveit_config:moveit_ros_move_group:python3-yaml:robot_state_publisher:ros_gz_bridge:ros_gz_sim:rviz2:xacro

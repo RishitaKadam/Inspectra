@@ -1,0 +1,17 @@
+names:
+- missing_hole
+- mouse_bite
+- open_circuit
+- short
+- spur
+- spurious_copper
+nc: 6
+roboflow:
+  license: CC BY 4.0
+  project: pcb-dataset-defect
+  url: https://universe.roboflow.com/object-detection-dt-wzpc6/pcb-dataset-defect/dataset/1
+  version: 1
+  workspace: object-detection-dt-wzpc6
+test: /home/rk/inspectra/PCB-Dataset-Defect-1/test/images
+train: /home/rk/inspectra/PCB-Dataset-Defect-1/train/images
+val: /home/rk/inspectra/PCB-Dataset-Defect-1/valid/images

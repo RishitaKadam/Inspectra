@@ -58,9 +58,22 @@ def generate_launch_description():
         ],
     )
 
+    inspectra_launch_share = get_package_share_directory("inspectra_launch")
+    rviz_config_path = os.path.join(inspectra_launch_share, "config", "inspectra.rviz")
+
+    custom_rviz = Node(
+        package="rviz2",
+        executable="rviz2",
+        name="rviz2_inspectra",
+        output="screen",
+        arguments=["-d", rviz_config_path],
+    )
+    delayed_rviz = TimerAction(period=3.0, actions=[custom_rviz])
+
     return LaunchDescription([
         demo,
         camera_mount_tf,
         camera_optical_tf,
         delayed_motion_planner_node,
+        delayed_rviz,
     ])

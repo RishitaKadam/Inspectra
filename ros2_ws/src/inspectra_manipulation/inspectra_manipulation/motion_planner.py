@@ -90,9 +90,8 @@ class MotionPlannerNode(Node):
             self._run_inspection_cycle()
             self._cycle_in_progress = False
         else:
-            self.get_logger().info(
-                "BAD PCB detected -> no robot action, continues on belt to reject area"
-            )
+            self.get_logger().info("BAD PCB detected -> returning to HOME position")
+            self._move_to_named_pose("HOME")
 
     def _on_run_cycle(self, msg: String):
         self._run_inspection_cycle()
@@ -183,6 +182,19 @@ class MotionPlannerNode(Node):
         )
         return self._planner.execute(result)
 
+    def _cleanup_detected_pcb(self):
+        """Defensively clear any leftover 'detected_pcb' state (attached
+        or in-world) from a previous cycle that aborted partway through,
+        which otherwise cascades into every subsequent cycle failing."""
+        try:
+            self._scene.detach_object("detected_pcb")
+        except Exception:
+            pass
+        try:
+            self._scene.remove_object("detected_pcb")
+        except Exception:
+            pass
+
     def _run_inspection_cycle(self):
         """Full pick -> inspect -> decide -> sort cycle.
 
@@ -192,17 +204,32 @@ class MotionPlannerNode(Node):
         not real defect inspection.
         """
         self.get_logger().info("=== Starting inspection cycle ===")
+        self._cleanup_detected_pcb()  # clear any leftover state from a prior failed cycle
+
+        pick_pose = self._latest_pick_pose
+        if pick_pose is None:
+            self.get_logger().error("Cycle aborted: no pick pose available")
+            return
+
+        px, py, pz = pick_pose.pose.position.x, pick_pose.pose.position.y, pick_pose.pose.position.z
 
         self.get_logger().info("Step 1/4: Moving to detected object (PICK)")
         if not self._move_to_detected_pick_pose_bool():
             self.get_logger().error("Cycle aborted: failed to reach PICK pose")
             return
 
+        # Spawn the visible PCB object only now (after the hover approach
+        # succeeds), then immediately attach it -- avoids the object's own
+        # collision geometry blocking the approach plan to reach it.
+        self._scene.add_pcb_object(px, py, pz, name="detected_pcb")
+        self._scene.attach_object("detected_pcb")
+
         self.get_logger().info("Step 2/4: Moving to INSPECTION pose")
         inspection_pose = pose_library.get_pose("INSPECTION")
         ix, iy, iz = inspection_pose["value"]
         if not self._move_to_cartesian(ix, iy, iz):
             self.get_logger().error("Cycle aborted: failed to reach INSPECTION pose")
+            self._cleanup_detected_pcb()
             return
 
         self.get_logger().info("Step 3/4: GOOD PCB confirmed, routing to GOOD_BIN")
@@ -213,7 +240,14 @@ class MotionPlannerNode(Node):
         bx, by, bz = bin_pose["value"]
         if not self._move_to_cartesian(bx, by, bz):
             self.get_logger().error(f"Cycle aborted: failed to reach {bin_name}")
+            self._cleanup_detected_pcb()
             return
+
+        self._scene.detach_object("detected_pcb")
+        # Re-place it explicitly at the bin's known world coordinates --
+        # bare detach has no pose data, so MoveIt doesn't know where to
+        # leave it, making it appear to keep following the arm.
+        self._scene.add_pcb_object(bx, by, bz, name="detected_pcb")
 
         self.get_logger().info(f"=== Cycle complete: PCB sorted to {bin_name} ===")
 
