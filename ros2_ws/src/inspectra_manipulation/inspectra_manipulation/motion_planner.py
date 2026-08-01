@@ -9,6 +9,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from vision_msgs.msg import Detection2DArray
+import time
 
 from inspectra_manipulation.planner import MotionPlanner
 from inspectra_manipulation.scene_manager import SceneManager
@@ -28,6 +29,8 @@ class MotionPlannerNode(Node):
         self._planner = MotionPlanner(node_name="inspectra_moveit_py")
 
         self._scene = SceneManager(self._planner.moveit_py, ros_node=self)
+        
+        time.sleep(2.0) 
         self._scene.add_inspection_table()
 
         self._executor = TrajectoryExecutor(self._planner, max_retries=1)
@@ -70,6 +73,10 @@ class MotionPlannerNode(Node):
         classification = inspection_logic.classify_pcb(detections)
         self._cycle_in_progress = True
         self._run_inspection_cycle(classification)
+        
+        self.get_logger().info("Waiting for the next PCB to arrive on the conveyor...")
+        time.sleep(4.0) 
+        
         self._cycle_in_progress = False
 
     def _on_run_cycle(self, msg: String):
@@ -87,7 +94,7 @@ class MotionPlannerNode(Node):
 
     def _move_to_named_pose(self, name: str):
         if name.upper() == "PICK":
-            self._move_to_detected_pick_pose()
+            self._move_to_cartesian(0.55, 0.0, 0.25)
             return
         try:
             pose = pose_library.get_pose(name)
@@ -119,19 +126,6 @@ class MotionPlannerNode(Node):
         results = self._executor.execute_sequence(config_names, stop_on_failure=True)
         self.get_logger().info(f"Sequence results: {results}")
 
-    def _move_to_detected_pick_pose(self):
-        if self._latest_pick_pose is None:
-            self.get_logger().error("No pick pose received yet")
-            return
-        pose = self._latest_pick_pose.pose
-        hover_z = pose.position.z + 0.15
-        self.set_start_to_current_via_planner()
-        result = self._planner.plan_to_pose(
-            x=pose.position.x, y=pose.position.y, z=hover_z,
-            frame_id="panda_link0", qx=1.0, qy=0.0, qz=0.0, qw=0.0,
-        )
-        self._planner.execute(result)
-
     def set_start_to_current_via_planner(self):
         self._planner.set_start_to_current()
 
@@ -139,63 +133,52 @@ class MotionPlannerNode(Node):
         self.set_start_to_current_via_planner()
         result = self._planner.plan_to_pose(
             x=x, y=y, z=z, frame_id="panda_link0",
-            qx=1.0, qy=0.0, qz=0.0, qw=0.0,
+            qx=0.9239, qy=-0.3827, qz=0.0, qw=0.0,
         )
         return self._planner.execute(result)
 
     def _run_inspection_cycle(self, classification: str):
-        """classification: 'GOOD' or 'BAD'. Picks the current board,
-        colors it, and sorts to the matching bin. NOTE: 'pick' means
-        hover + attach (no real gripper exists in this MoveIt config)."""
         self.get_logger().info(f"=== Starting cycle: {classification} PCB detected ===")
         self._cleanup_detected_pcb()
 
-        pick_pose = self._latest_pick_pose
-        if pick_pose is None:
-            self.get_logger().error("Cycle aborted: no pick pose available")
-            return
-        px, py, pz = pick_pose.pose.position.x, pick_pose.pose.position.y, pick_pose.pose.position.z
-        hover_z = pz + 0.15
+        safe_px = 0.55
+        safe_py = 0.0
+        safe_pz = 0.0
+        hover_z = safe_pz + 0.25
 
-        self.get_logger().info("Step 1/4: Moving to detected object (PICK)")
-        if not self._move_to_detected_pick_pose_bool():
+        self.get_logger().info("Step 1/3: Moving to Center (PICK)")
+        if not self._move_to_cartesian(safe_px, safe_py, hover_z):
             self.get_logger().error("Cycle aborted: failed to reach PICK pose")
             return
 
-        self._scene.add_pcb_object(px, py, hover_z, name="detected_pcb")
+        pcb_visual_z = hover_z - 0.15
+        
+        self._scene.add_pcb_object(safe_px, safe_py, pcb_visual_z, name="detected_pcb")
         self._scene.attach_object("detected_pcb")
 
+        # FIX: Brought Y into 0.50. This perfectly clears the table without breaking the robot's joints.
         if classification == "GOOD":
             self._scene.set_object_color("detected_pcb", 0.0, 1.0, 0.0)  # green
+            bin_name = "PASS_BIN"
+            bx, by, bz = 0.45, 0.50, 0.25  # Left edge
         else:
             self._scene.set_object_color("detected_pcb", 1.0, 0.0, 0.0)  # red
+            bin_name = "FAIL_BIN"
+            bx, by, bz = 0.45, -0.50, 0.25 # Right edge
 
-        self.get_logger().info("Step 2/4: Moving to INSPECTION pose")
-        ix, iy, iz = pose_library.get_pose("INSPECTION")["value"]
-        if not self._move_to_cartesian(ix, iy, iz):
-            self.get_logger().error("Cycle aborted: failed to reach INSPECTION pose")
-            self._cleanup_detected_pcb()
-            return
-
-        bin_name = "PASS_BIN" if classification == "GOOD" else "FAIL_BIN"
-        self.get_logger().info(f"Step 3/4: {classification} confirmed, routing to {bin_name}")
-        bx, by, bz = pose_library.get_pose(bin_name)["value"]
-
-        self.get_logger().info(f"Step 4/4: Moving to {bin_name}")
+        self.get_logger().info(f"Step 2/3: Sorting straight to {bin_name}")
         if not self._move_to_cartesian(bx, by, bz):
             self.get_logger().error(f"Cycle aborted: failed to reach {bin_name}")
             self._cleanup_detected_pcb()
             return
 
-        self._scene.detach_object("detected_pcb")
-        self.get_logger().info(f"=== Cycle complete: PCB sorted to {bin_name} ===")
+        # FIX: Use the native cleanup function to delete the block safely without freezing the ROS thread
+        self._cleanup_detected_pcb()
+        
+        self.get_logger().info("Step 3/3: Resetting arm to center for next board")
+        self._move_to_cartesian(safe_px, safe_py, hover_z)
 
-    def _move_to_detected_pick_pose_bool(self) -> bool:
-        if self._latest_pick_pose is None:
-            return False
-        pose = self._latest_pick_pose.pose
-        hover_z = pose.position.z + 0.15
-        return self._move_to_cartesian(pose.position.x, pose.position.y, hover_z)
+        self.get_logger().info(f"=== Cycle complete: PCB sorted to {bin_name} ===")
 
     def destroy_node(self):
         self._planner.shutdown()

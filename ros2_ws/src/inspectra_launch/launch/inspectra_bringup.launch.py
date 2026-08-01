@@ -37,7 +37,7 @@ def generate_launch_description():
         output="screen",
         parameters=[{
             "startup_pose": LaunchConfiguration("startup_pose"),
-            "use_sim_time": True,
+            "use_sim_time": False,
         }],
     )
 
@@ -88,17 +88,14 @@ def generate_launch_description():
         name="rviz2_inspectra",
         output="screen",
         arguments=["-d", rviz_config_path],
-        parameters=[{"use_sim_time": True}],
+        parameters=[{"use_sim_time": False}],
     )
     delayed_rviz = TimerAction(period=3.0, actions=[custom_rviz])
 
-    headless_env = SetEnvironmentVariable(name="QT_QPA_PLATFORM", value="offscreen")
-
-    sim_time_param = SetParameter(name="use_sim_time", value=True)
+    sim_time_param = SetParameter(name="use_sim_time", value=False)
 
     return LaunchDescription([
         startup_pose_arg,
-        headless_env,
         sim_time_param,
         demo,
         world_tf,
