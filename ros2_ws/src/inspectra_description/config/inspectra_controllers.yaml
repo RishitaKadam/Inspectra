@@ -8,6 +8,9 @@ controller_manager:
     panda_arm_controller:
       type: joint_trajectory_controller/JointTrajectoryController
 
+    panda_hand_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
 panda_arm_controller:
   ros__parameters:
     joints:
@@ -26,3 +29,16 @@ panda_arm_controller:
     state_publish_rate: 50.0
     action_monitor_rate: 20.0
     allow_partial_joints_goal: false
+
+panda_hand_controller:
+  ros__parameters:
+    joints:
+      - panda_finger_joint1
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    state_publish_rate: 50.0
+    action_monitor_rate: 20.0
+

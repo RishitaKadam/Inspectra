@@ -24,7 +24,7 @@ class ConveyorMotionNode(Node):
         super().__init__("conveyor_motion_node")
 
         self.declare_parameter("world_name", "inspectra_world")
-        self.declare_parameter("belt_speed", 0.05)  # m/s
+        self.declare_parameter("belt_speed", 0.08)  # m/s
         self.declare_parameter("belt_start_y", -1.0)
         self.declare_parameter("belt_end_y", 0.0)
 

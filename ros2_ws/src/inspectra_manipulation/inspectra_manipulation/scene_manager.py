@@ -1,19 +1,31 @@
 """
-SceneManager: adds/removes collision objects in the MoveIt planning scene.
+SceneManager: adds/removes/colors collision objects in the MoveIt planning scene.
 """
 
-from moveit_msgs.msg import CollisionObject, AttachedCollisionObject
+from moveit_msgs.msg import CollisionObject, AttachedCollisionObject, PlanningScene, ObjectColor
 from shape_msgs.msg import SolidPrimitive
 from geometry_msgs.msg import Pose
+from std_msgs.msg import ColorRGBA
 
 from inspectra_manipulation.utils import get_inspectra_logger
 
 
 class SceneManager:
-    def __init__(self, moveit_py_instance):
+    def __init__(self, moveit_py_instance, ros_node=None):
+        """
+        Args:
+            moveit_py_instance: planner.moveit_py
+            ros_node: the owning rclpy Node (pass motion_planner_node's
+                'self'), used only to create a real publisher for object
+                colors. Optional -- color calls are silently skipped if
+                not provided.
+        """
         self._logger = get_inspectra_logger("scene_manager")
         self._moveit = moveit_py_instance
         self._psm = self._moveit.get_planning_scene_monitor()
+        self._color_pub = None
+        if ros_node is not None:
+            self._color_pub = ros_node.create_publisher(PlanningScene, "/planning_scene", 10)
 
     def add_box(self, name: str, dimensions, position, frame_id: str = "panda_link0",
                 orientation=(0.0, 0.0, 0.0, 1.0)):
@@ -81,6 +93,20 @@ class SceneManager:
 
         self._logger.info(f"Detached '{name}' from '{link_name}'")
 
+    def set_object_color(self, name: str, r: float, g: float, b: float, a: float = 1.0):
+        """Set a collision object's RViz display color."""
+        if self._color_pub is None:
+            self._logger.warning(f"No color publisher configured; skipping color for '{name}'")
+            return
+        msg = PlanningScene()
+        msg.is_diff = True
+        oc = ObjectColor()
+        oc.id = name
+        oc.color = ColorRGBA(r=r, g=g, b=b, a=a)
+        msg.object_colors = [oc]
+        self._color_pub.publish(msg)
+        self._logger.info(f"Set color of '{name}' to ({r},{g},{b})")
+
     def add_pcb_object(self, x: float, y: float, z: float = 0.0, name: str = "detected_pcb"):
         self.add_box(
             name=name,
@@ -89,9 +115,8 @@ class SceneManager:
         )
 
     def add_inspection_table(self):
-        """Table (brown-ish geometry via RViz default coloring) with 4 legs.
-        Tabletop top surface stays at z=0 -- matches pose_estimator's
-        table_plane_z assumption. Do not move without updating both."""
+        """Table (tabletop + 4 legs), colored brown. Top surface stays at
+        z=0 to match pose_estimator's table_plane_z assumption."""
         table_x, table_y = 0.5, 0.0
         width, depth, thickness = 0.6, 1.2, 0.05
 
@@ -100,6 +125,7 @@ class SceneManager:
             dimensions=(width, depth, thickness),
             position=(table_x, table_y, -thickness / 2.0),
         )
+        self.set_object_color("inspection_table_top", 0.35, 0.20, 0.10)
 
         leg_height = 0.4
         leg_size = 0.05
@@ -118,3 +144,4 @@ class SceneManager:
                 dimensions=(leg_size, leg_size, leg_height),
                 position=(lx, ly, leg_z),
             )
+            self.set_object_color(leg_name, 0.15, 0.09, 0.05)

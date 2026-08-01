@@ -6,13 +6,20 @@ Brings up the full Inspectra simulation stack in one command:
 
 import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, TimerAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch_ros.actions import Node
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node, SetParameter
 from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
+    startup_pose_arg = DeclareLaunchArgument(
+        "startup_pose",
+        default_value="",
+        description="Named pose to execute after motion planner startup",
+    )
+
     panda_demo_launch = os.path.join(
         get_package_share_directory("moveit_resources_panda_moveit_config"),
         "launch",
@@ -28,7 +35,10 @@ def generate_launch_description():
         executable="motion_planner_node",
         name="motion_planner_node",
         output="screen",
-        parameters=[{"startup_pose": ""}],
+        parameters=[{
+            "startup_pose": LaunchConfiguration("startup_pose"),
+            "use_sim_time": True,
+        }],
     )
 
     delayed_motion_planner_node = TimerAction(
@@ -36,13 +46,24 @@ def generate_launch_description():
         actions=[motion_planner_node],
     )
 
+    world_tf = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="world_to_panda_link0_tf",
+        arguments=[
+            "--x", "0", "--y", "0", "--z", "0",
+            "--roll", "0", "--pitch", "0", "--yaw", "0",
+            "--frame-id", "world", "--child-frame-id", "panda_link0",
+        ],
+    )
+
     camera_mount_tf = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         name="camera_mount_tf",
         arguments=[
-            "--x", "0.5", "--y", "0.0", "--z", "1.0",
-            "--roll", "0", "--pitch", "1.5708", "--yaw", "0",
+            "--x", "0.78", "--y", "-0.15", "--z", "0.62",
+            "--roll", "0", "--pitch", "1.20", "--yaw", "0",
             "--frame-id", "panda_link0", "--child-frame-id", "camera_link",
         ],
     )
@@ -67,11 +88,20 @@ def generate_launch_description():
         name="rviz2_inspectra",
         output="screen",
         arguments=["-d", rviz_config_path],
+        parameters=[{"use_sim_time": True}],
     )
     delayed_rviz = TimerAction(period=3.0, actions=[custom_rviz])
 
+    headless_env = SetEnvironmentVariable(name="QT_QPA_PLATFORM", value="offscreen")
+
+    sim_time_param = SetParameter(name="use_sim_time", value=True)
+
     return LaunchDescription([
+        startup_pose_arg,
+        headless_env,
+        sim_time_param,
         demo,
+        world_tf,
         camera_mount_tf,
         camera_optical_tf,
         delayed_motion_planner_node,

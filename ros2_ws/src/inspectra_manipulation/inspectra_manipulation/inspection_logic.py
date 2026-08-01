@@ -15,6 +15,13 @@ DEFECT_CLASSES = {
 MIN_CONFIDENCE = 0.5
 
 
+def get_sorting_target(classification: str) -> tuple[str, str]:
+    """Return the display color and bin name for a PCB classification."""
+    if classification == "BAD":
+        return "red", "FAIL_BIN"
+    return "green", "PASS_BIN"
+
+
 def classify_pcb(detections: list) -> str:
     """Classify a PCB as GOOD or BAD from a list of (class_name, confidence) tuples.
 

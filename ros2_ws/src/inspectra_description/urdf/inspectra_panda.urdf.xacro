@@ -11,41 +11,21 @@
   <xacro:franka_robot
     robot_type="fer"
     connected_to="world"
-    hand="false"
-    gazebo="false"
+    hand="true"
+    ee_id="franka_hand"
+    gazebo="true"
     no_prefix="false"
     arm_prefix=""
   />
 
-  <!-- ros2_control interface: exposes each joint's position command/state
-       so gz_ros2_control's plugin (below) can drive them in simulation.
-       initial_value set explicitly per joint (matching moveit_resources_
-       panda_moveit_config's initial_positions.yaml) — without this,
-       joints default to a state that (for fer_joint4) sits essentially
-       exactly on its upper limit, causing MoveIt's CheckStartStateBounds
-       to reject the start state due to floating-point boundary issues. -->
-  <ros2_control name="InspectraPandaSystem" type="system">
-    <hardware>
-      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
-    </hardware>
-    <xacro:macro name="fer_joint_interface" params="joint_name initial_value">
-      <joint name="${joint_name}">
-        <command_interface name="position"/>
-        <state_interface name="position">
-          <param name="initial_value">${initial_value}</param>
-        </state_interface>
-        <state_interface name="velocity"/>
-        <state_interface name="effort"/>
-      </joint>
-    </xacro:macro>
-    <xacro:fer_joint_interface joint_name="fer_joint1" initial_value="0.0"/>
-    <xacro:fer_joint_interface joint_name="fer_joint2" initial_value="-0.785"/>
-    <xacro:fer_joint_interface joint_name="fer_joint3" initial_value="0.0"/>
-    <xacro:fer_joint_interface joint_name="fer_joint4" initial_value="-2.356"/>
-    <xacro:fer_joint_interface joint_name="fer_joint5" initial_value="0.0"/>
-    <xacro:fer_joint_interface joint_name="fer_joint6" initial_value="1.571"/>
-    <xacro:fer_joint_interface joint_name="fer_joint7" initial_value="0.785"/>
-  </ros2_control>
+  <gazebo reference="panda_link0">
+    <static>true</static>
+    <kinematic>true</kinematic>
+  </gazebo>
+
+  <gazebo reference="fer_joint_world">
+    <preserveFixedJoint>true</preserveFixedJoint>
+  </gazebo>
 
   <gazebo>
     <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">

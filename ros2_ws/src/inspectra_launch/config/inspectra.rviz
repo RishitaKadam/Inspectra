@@ -54,7 +54,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /rviz_visual_tools
+        Value: /motion_planner_node/sorting_markers
       Value: true
     - Class: moveit_rviz_plugin/Trajectory
       Color Enabled: false
@@ -501,7 +501,7 @@ Visualization Manager:
       Value: true
   Enabled: true
   Global Options:
-    Background Color: 48; 48; 48
+    Background Color: 35; 24; 14
     Fixed Frame: panda_link0
     Frame Rate: 30
   Name: root
