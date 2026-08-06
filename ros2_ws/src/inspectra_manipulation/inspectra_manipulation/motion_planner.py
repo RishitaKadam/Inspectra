@@ -59,6 +59,12 @@ class MotionPlannerNode(Node):
         self._move_to_named_pose(msg.data)
 
     def _on_pick_pose(self, msg: PoseStamped):
+        # Clamp to a safe, guaranteed-reachable zone (well within the
+        # ~0.85m max reach), since pose_estimator's per-frame dynamic
+        # intrinsics can produce wildly different values across the many
+        # differently-sized real photos in the conveyor feed.
+        msg.pose.position.x = max(0.3, min(0.55, msg.pose.position.x))
+        msg.pose.position.y = max(-0.3, min(0.3, msg.pose.position.y))
         self._latest_pick_pose = msg
 
     def _on_detections(self, msg: Detection2DArray):

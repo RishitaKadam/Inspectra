@@ -114,6 +114,21 @@ class SceneManager:
             position=(x, y, z + 0.005),
         )
 
+    def add_bins(self):
+        """Add visible PASS/FAIL bin objects, positioned forward (same
+        reach depth as the table/pick area) so the robot's sorting motion
+        actually ends at the bin instead of stopping short of it."""
+        # Bins moved outside the table footprint (table depth is y=[-0.6,0.6],
+        # so y=+-0.7 sits just past the edge). Box height 0.2, centered at
+        # z=0.10, so its TOP surface is at z=0.20 -- matching exactly where
+        # the arm's flange (and attached object) actually ends up when
+        # sorting, per pose_library.PASS_BIN/FAIL_BIN's z=0.20 value.
+        self.add_box(name="pass_bin", dimensions=(0.15, 0.15, 0.2), position=(0.4, 0.3, 0.10))
+        self.set_object_color("pass_bin", 0.0, 0.6, 0.0)
+
+        self.add_box(name="fail_bin", dimensions=(0.15, 0.15, 0.2), position=(0.4, -0.3, 0.10))
+        self.set_object_color("fail_bin", 0.6, 0.0, 0.0)
+
     def add_inspection_table(self):
         """Table (tabletop + 4 legs), colored brown. Top surface stays at
         z=0 to match pose_estimator's table_plane_z assumption."""

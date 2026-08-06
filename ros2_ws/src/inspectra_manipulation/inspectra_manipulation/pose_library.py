@@ -39,8 +39,11 @@ PICK = {"type": PoseType.UNRESOLVED, "value": None}
 # not derived from any real bin/fixture geometry yet.
 PRE_PICK = {"type": PoseType.CARTESIAN, "value": (0.4, -0.3, 0.25)}
 INSPECTION = {"type": PoseType.CARTESIAN, "value": (0.4, -0.3, 0.35)}
-PASS_BIN = {"type": PoseType.CARTESIAN, "value": (0.35, 0.35, 0.20)}
-FAIL_BIN = {"type": PoseType.CARTESIAN, "value": (-0.35, -0.35, 0.20)}
+# Bin coordinates match scene_manager.add_bins()'s visible box positions
+# exactly (x=0.6 forward, matching the pick/inspection reach depth), plus
+# a small z offset above the bin's top surface for a clean drop-in motion.
+PASS_BIN = {"type": PoseType.CARTESIAN, "value": (0.3, 0.5, 0.25)}
+FAIL_BIN = {"type": PoseType.CARTESIAN, "value": (0.3, -0.5, 0.25)}
 
 POSE_LIBRARY = {
     "HOME": HOME,
